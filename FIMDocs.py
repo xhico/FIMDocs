@@ -1,13 +1,16 @@
 # -*- coding: utf-8 -*-
 # !/usr/bin/python3
 
-# python3 -m pip install tweepy selenium pyshorteners python-dateutil --no-cache-dir
+# python3 -m pip install yagmail tweepy selenium pdf2image --no-cache-dir
+# sudo apt install poppler-utils -y
 import json
 import os
 import datetime
+import shutil
+import urllib.request
 import tweepy
 import yagmail
-import pyshorteners
+import pdf2image
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.firefox.options import Options
@@ -36,9 +39,12 @@ api = tweepy.API(auth)
 
 
 def getLastTweetedPost():
-    with open('log.json') as inFile:
-        data = json.load(inFile)
-    return data["date"], data["title"], data["href"]
+    try:
+        with open('log.json') as inFile:
+            data = json.load(inFile)[0]
+        return data["date"], data["title"], data["href"]
+    except Exception:
+        return "", "", ""
 
 
 def getPosts():
@@ -53,31 +59,66 @@ def getPosts():
 
     # Go through each card
     newPosts = []
-    cards = documents.find_elements(By.CLASS_NAME, "card-body")
-    for card in cards:
+    for card in documents.find_elements(By.CLASS_NAME, "card-body"):
         _, cardTitle, cardDate = card.find_elements(By.TAG_NAME, "p")
         cardTitle = cardTitle.text
         cardDate = cardDate.text
         cardHref = card.find_element(By.TAG_NAME, "a").get_attribute("href")
 
         # Change date from MM/DD/YYYY to YYYY/MM/DD
-        cardDate = datetime.datetime.strptime(cardDate, "%m/%d/%Y").strftime("%Y/%m/%d") + " " + datetime.datetime.today().strftime("%Hh%M")
+        cardDate = datetime.datetime.strptime(cardDate, "%m/%d/%Y").strftime("%Y/%m/%d")
 
         # Check
-        if cardDate.split(" ")[0] == lastDate.split(" ")[0] and cardTitle == lastTitle and cardHref == lastHref:
+        if cardDate == lastDate and cardTitle == lastTitle and cardHref == lastHref:
             break
 
         # Add to new posts
         newPosts.append({"date": cardDate, "title": cardTitle, "href": cardHref})
 
-    return reversed(newPosts)
+    return newPosts
 
 
-def tweet(tweetStr):
-    api.update_status(tweetStr)
-    print("Tweeted - " + tweetStr)
+def getScreenshots(pdfHref):
+    try:
+        # Reset tmpFolder
+        if os.path.exists(tmpFolder):
+            shutil.rmtree(tmpFolder)
+        os.mkdir(tmpFolder)
 
-    return True
+        # Download PDF
+        pdfFile = os.path.join(tmpFolder, "tmp.pdf")
+        urllib.request.urlretrieve(pdfHref, pdfFile)
+
+        # Check what OS
+        if os.name == "nt":
+            pages = pdf2image.convert_from_path(poppler_path=r"poppler-win\Library\bin", pdf_path=pdfFile)
+        else:
+            pages = pdf2image.convert_from_path(pdf_path=pdfFile)
+
+        # Save the first four pages
+        for idx, page in enumerate(pages[0:4]):
+            jpgFile = os.path.join(tmpFolder, "tmp_" + str(idx) + ".jpg")
+            page.save(jpgFile)
+        hasPics = True
+    except Exception:
+        print("Failed to screenshot")
+        hasPics = False
+
+    return hasPics
+
+
+def tweet(tweetStr, hasPics):
+    try:
+        media_ids = []
+        if hasPics:
+            imageFiles = sorted([file for file in os.listdir(tmpFolder) if file.split(".")[-1] == "jpg"])
+            media_ids = [api.media_upload(os.path.join(tmpFolder, image)).media_id_string for image in imageFiles]
+
+        api.update_status(status=tweetStr, media_ids=media_ids)
+        print("Tweeted")
+    except Exception as ex:
+        print("Failed to Tweet")
+        yagmail.SMTP(EMAIL_USER, EMAIL_APPPW).send(EMAIL_RECEIVER, "Failed to Tweet - " + os.path.basename(__file__), str(ex) + "\n\n" + tweetStr)
 
 
 def favTweets(tags, numbTweets):
@@ -96,35 +137,50 @@ def favTweets(tags, numbTweets):
     return True
 
 
+def batchDelete():
+    print("Deleting all tweets from the account @" + api.verify_credentials().screen_name)
+    for status in tweepy.Cursor(api.user_timeline).items():
+        try:
+            api.destroy_status(status.id)
+        except Exception:
+            pass
+
+
 def main():
-    # Get last post
-    newPosts = getPosts()
+    # Get latest posts
+    newPosts = list(reversed(getPosts()))
+
+    # Set hashtags
     hashtags = "#FIM #FIMfamily #GrandPrix #MotoGP #Motorsports #Racing #Motorcycling"
 
     # Go through each new post
     for post in newPosts:
-        cardTitle, cardDate, cardHref = post["title"], post["date"], post["href"]
+        # Get post info
+        postTitle, postDate, postHref = post["title"], post["date"], post["href"]
+        print(postTitle)
+        print(postDate)
 
         # Get PDF link
-        browser.get(cardHref)
+        browser.get(postHref)
         pdfHref = browser.find_element(By.CLASS_NAME, "news-infos").find_element(By.TAG_NAME, "a").get_attribute("href")
 
-        try:
-            # TinyURL pdfHref and cardHref
-            pdfHref = type_tiny.tinyurl.short(pdfHref)
-            cardHref = type_tiny.tinyurl.short(cardHref)
-        except Exception:
-            break
+        # Screenshot DPF
+        hasPics = getScreenshots(pdfHref)
 
         # Tweet!
-        tweet(cardTitle + "\n\n" + "PDF " + pdfHref + "\n" + "URL " + cardHref + "\n\n" + "Published at: " + cardDate + "\n" + hashtags)
+        tweet(postTitle + "\n" + "Published at: " + postDate + "\n\n" + pdfHref + "\n\n" + hashtags, hasPics)
 
-        # Save as last post
-        with open('log.json', 'w') as outfile:
-            json.dump(post, outfile, indent=4)
+        # Save log
+        with open("log.json") as inFile:
+            data = list(reversed(json.load(inFile)))
+            data.append(post)
+        with open("log.json", "w") as outFile:
+            json.dump(list(reversed(data)), outFile, indent=2)
+
+        print()
 
     # Get tweets -> Like them
-    favTweets(hashtags, 10)
+    favTweets(hashtags, 50)
 
 
 if __name__ == "__main__":
@@ -136,7 +192,9 @@ if __name__ == "__main__":
     service = Service("/home/pi/geckodriver")
     # service = Service(r"C:\Users\xhico\OneDrive\Useful\geckodriver.exe")
     browser = webdriver.Firefox(service=service, options=options)
-    type_tiny = pyshorteners.Shortener()
+
+    # Set temp folder
+    tmpFolder = r"tmp"
 
     try:
         main()
