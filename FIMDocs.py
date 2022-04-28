@@ -68,12 +68,11 @@ def getPosts():
         # Change date from MM/DD/YYYY to YYYY/MM/DD
         cardDate = datetime.datetime.strptime(cardDate, "%m/%d/%Y").strftime("%Y/%m/%d")
 
-        # Check
-        if cardDate == lastDate and cardTitle == lastTitle and cardHref == lastHref:
+        # Check if post is valid ? Add to new posts : break
+        if cardDate >= lastDate and cardTitle != lastTitle and cardHref != lastHref:
+            newPosts.append({"date": cardDate, "title": cardTitle, "href": cardHref})
+        else:
             break
-
-        # Add to new posts
-        newPosts.append({"date": cardDate, "title": cardTitle, "href": cardHref})
 
     return newPosts
 
