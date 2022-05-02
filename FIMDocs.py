@@ -56,17 +56,28 @@ def getPosts():
 
     # Wait for documents to load
     documents = WebDriverWait(browser, 10).until(EC.presence_of_element_located((By.CLASS_NAME, "documents")))
+    documents = documents.find_elements(By.CLASS_NAME, "card-body")
 
     # Go through each card
-    newPosts = []
-    for card in documents.find_elements(By.CLASS_NAME, "card-body"):
+    tmpDocuments = []
+    for card in documents:
         _, cardTitle, cardDate = card.find_elements(By.TAG_NAME, "p")
-        cardTitle = cardTitle.text
-        cardDate = cardDate.text
+        cardTitle, cardDate = cardTitle.text, cardDate.text
         cardHref = card.find_element(By.TAG_NAME, "a").get_attribute("href")
 
         # Change date from MM/DD/YYYY to YYYY/MM/DD
         cardDate = datetime.datetime.strptime(cardDate, "%m/%d/%Y").strftime("%Y/%m/%d")
+        tmpDocuments.append({"date": cardDate, "title": cardTitle, "href": cardHref})
+
+    # Sort documents by date, newest to older
+    if tmpDocuments[0]["date"] < tmpDocuments[-1]["date"]:
+        print("Reverse Documents")
+        tmpDocuments = reversed(tmpDocuments)
+
+    # Go through each card
+    newPosts = []
+    for card in tmpDocuments:
+        cardTitle, cardDate, cardHref = card["title"], card["date"], card["href"]
 
         # Check if post is valid ? Add to new posts : break
         if cardDate >= lastDate and cardTitle != lastTitle and cardHref != lastHref:
