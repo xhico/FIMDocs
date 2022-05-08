@@ -190,7 +190,7 @@ def main():
         print()
 
     # Get tweets -> Like them
-    favTweets(hashtags, 2)
+    favTweets(hashtags, 5)
 
 
 if __name__ == "__main__":
