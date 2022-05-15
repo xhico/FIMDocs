@@ -161,7 +161,7 @@ def main():
     newPosts = list(reversed(getPosts()))
 
     # Set hashtags
-    hashtags = "#FIM #FIMfamily #GrandPrix #MotoGP #Motorsports #Racing #Motorcycling"
+    hashtags = "#FIM #FIMfamily #GrandPrix #MotoGP"
 
     # Go through each new post
     for post in newPosts:
