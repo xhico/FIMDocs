@@ -162,7 +162,7 @@ def main():
         hasPics = getScreenshots(pdfHref)
 
         # Tweet!
-        tweet(postTitle + "\n" + "Published at: " + postDate + "\n\n" + pdfHref + "\n\n" + hashtags, hasPics)
+        tweet(postTitle + "\n\n" + "Published at: " + postDate + "\n\n" + pdfHref + "\n\n" + hashtags, hasPics)
 
         # Save log
         with open("log.json") as inFile:
