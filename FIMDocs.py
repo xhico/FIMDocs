@@ -40,7 +40,7 @@ api = tweepy.API(auth)
 
 def getLastTweetedPost():
     try:
-        with open('log.json') as inFile:
+        with open(LOG_FILE) as inFile:
             data = json.load(inFile)[0]
         return data["date"], data["title"], data["href"]
     except Exception:
@@ -101,7 +101,8 @@ def getScreenshots(pdfHref):
 
         # Check what OS
         if os.name == "nt":
-            pages = pdf2image.convert_from_path(poppler_path=r"poppler-win\Library\bin", pdf_path=pdfFile)
+            poppler_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "poppler-win\Library\bin")
+            pages = pdf2image.convert_from_path(poppler_path=poppler_path, pdf_path=pdfFile)
         else:
             pages = pdf2image.convert_from_path(pdf_path=pdfFile)
 
@@ -165,18 +166,17 @@ def main():
         tweet(postTitle + "\n\n" + "Published at: " + postDate + "\n\n" + pdfHref + "\n\n" + hashtags, hasPics)
 
         # Save log
-        with open("log.json") as inFile:
+        with open(LOG_FILE) as inFile:
             data = list(reversed(json.load(inFile)))
             data.append(post)
-        with open("log.json", "w") as outFile:
+        with open(LOG_FILE, "w") as outFile:
             json.dump(list(reversed(data)), outFile, indent=2)
-
-        print()
 
 
 if __name__ == "__main__":
     print("----------------------------------------------------")
-    os.chdir(os.path.dirname(os.path.abspath(__file__)))
+    print(datetime.datetime.strftime(datetime.datetime.utcnow(), "%Y/%m/%d %H:%M UTC"))
+
     headless = True
     options = Options()
     options.headless = headless
@@ -185,15 +185,28 @@ if __name__ == "__main__":
     browser = webdriver.Firefox(service=service, options=options)
 
     # Set temp folder
-    tmpFolder = r"tmp"
+    tmpFolder = os.path.join(os.path.dirname(os.path.abspath(__file__)), "tmp")
+    ISRUNNING_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "isRunning.tmp")
+    LOG_FILE = os.path.join(os.path.join(os.path.dirname(os.path.abspath(__file__)), "log.json"))
 
-    try:
-        main()
-    except Exception as ex:
-        print(ex)
-        yagmail.SMTP(EMAIL_USER, EMAIL_APPPW).send(EMAIL_RECEIVER, "Error - " + os.path.basename(__file__), str(ex))
-    finally:
-        if headless:
-            browser.close()
-            print("Close")
-        print("End")
+    # Check if isRunning file exists
+    if os.path.exists(ISRUNNING_FILE):
+        print("isRunning")
+    else:
+        # Create isRunning file
+        open(ISRUNNING_FILE, "x")
+
+        try:
+            main()
+        except Exception as ex:
+            print(ex)
+            yagmail.SMTP(EMAIL_USER, EMAIL_APPPW).send(EMAIL_RECEIVER, "Error - " + os.path.basename(__file__), str(ex))
+        finally:
+            # Remove isRunning file
+            os.remove(ISRUNNING_FILE)
+            if headless:
+                browser.close()
+                print("Close")
+            print("End")
+            print("----------------------------------------------------")
+
