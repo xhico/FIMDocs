@@ -156,11 +156,14 @@ def main():
         print(postDate)
 
         # Get PDF link
-        browser.get(postHref)
-        pdfHref = browser.find_element(By.CLASS_NAME, "news-infos").find_element(By.TAG_NAME, "a").get_attribute("href")
+        try:
+            browser.get(postHref)
+            pdfHref = browser.find_element(By.CLASS_NAME, "news-infos").find_element(By.TAG_NAME, "a").get_attribute("href")
 
-        # Screenshot DPF
-        hasPics = getScreenshots(pdfHref)
+            # Screenshot DPF
+            hasPics = getScreenshots(pdfHref)
+        except Exception:
+            pdfHref = postHref
 
         # Tweet!
         tweet(postTitle + "\n\n" + "Published at: " + postDate + "\n\n" + pdfHref + "\n\n" + hashtags, hasPics)
@@ -177,17 +180,11 @@ if __name__ == "__main__":
     print("----------------------------------------------------")
     print(datetime.datetime.strftime(datetime.datetime.utcnow(), "%Y/%m/%d %H:%M UTC"))
 
-    headless = True
-    options = Options()
-    options.headless = headless
-    service = Service("/home/pi/geckodriver")
-    # service = Service(r"C:\Users\xhico\OneDrive\Useful\geckodriver.exe")
-    browser = webdriver.Firefox(service=service, options=options)
-
     # Set temp folder
     tmpFolder = os.path.join(os.path.dirname(os.path.abspath(__file__)), "tmp")
     ISRUNNING_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "isRunning.tmp")
     LOG_FILE = os.path.join(os.path.join(os.path.dirname(os.path.abspath(__file__)), "log.json"))
+    
 
     # Check if isRunning file exists
     if os.path.exists(ISRUNNING_FILE):
@@ -195,6 +192,13 @@ if __name__ == "__main__":
     else:
         # Create isRunning file
         open(ISRUNNING_FILE, "x")
+        
+        headless = True
+        options = Options()
+        options.headless = headless
+        service = Service("/home/pi/geckodriver")
+        # service = Service(r"C:\Users\xhico\OneDrive\Useful\geckodriver.exe")
+        browser = webdriver.Firefox(service=service, options=options)
 
         try:
             main()
