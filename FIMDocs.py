@@ -118,13 +118,10 @@ def getScreenshots(pdfHref):
     return hasPics
 
 
-def tweet(tweetStr, hasPics):
+def tweet(tweetStr):
     try:
-        media_ids = []
-        if hasPics:
-            imageFiles = sorted([file for file in os.listdir(tmpFolder) if file.split(".")[-1] == "jpg"])
-            media_ids = [api.media_upload(os.path.join(tmpFolder, image)).media_id_string for image in imageFiles]
-
+        imageFiles = sorted([os.path.join(tmpFolder, file) for file in os.listdir(tmpFolder) if file.split(".")[-1] == "jpg"])
+        media_ids = [api.media_upload(os.path.join(tmpFolder, image)).media_id_string for image in imageFiles]
         api.update_status(status=tweetStr, media_ids=media_ids)
         print("Tweeted")
     except Exception as ex:
@@ -164,9 +161,10 @@ def main():
             hasPics = getScreenshots(pdfHref)
         except Exception:
             pdfHref = postHref
+            hasPics = False
 
         # Tweet!
-        tweet(postTitle + "\n\n" + "Published at: " + postDate + "\n\n" + pdfHref + "\n\n" + hashtags, hasPics)
+        tweet(postTitle + "\n\n" + "Published at: " + postDate + "\n\n" + pdfHref + "\n\n" + hashtags)
 
         # Save log
         with open(LOG_FILE) as inFile:
@@ -184,7 +182,6 @@ if __name__ == "__main__":
     tmpFolder = os.path.join(os.path.dirname(os.path.abspath(__file__)), "tmp")
     ISRUNNING_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "isRunning.tmp")
     LOG_FILE = os.path.join(os.path.join(os.path.dirname(os.path.abspath(__file__)), "log.json"))
-    
 
     # Check if isRunning file exists
     if os.path.exists(ISRUNNING_FILE):
@@ -192,7 +189,7 @@ if __name__ == "__main__":
     else:
         # Create isRunning file
         open(ISRUNNING_FILE, "x")
-        
+
         headless = True
         options = Options()
         options.headless = headless
@@ -213,4 +210,3 @@ if __name__ == "__main__":
                 print("Close")
             print("End")
             print("----------------------------------------------------")
-
