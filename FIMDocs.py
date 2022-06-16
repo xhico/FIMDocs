@@ -140,6 +140,7 @@ def batchDelete():
 
 def main():
     # Get latest posts
+    print("Get latest posts")
     newPosts = list(reversed(getPosts()))
 
     # Set hashtags
@@ -156,12 +157,12 @@ def main():
         try:
             browser.get(postHref)
             pdfHref = browser.find_element(By.CLASS_NAME, "news-infos").find_element(By.TAG_NAME, "a").get_attribute("href")
+            pdfHref = "".join(pdfHref.split("?t=")[:-1])
 
             # Screenshot DPF
-            hasPics = getScreenshots(pdfHref)
+            getScreenshots(pdfHref)
         except Exception:
             pdfHref = postHref
-            hasPics = False
 
         # Tweet!
         tweet(postTitle + "\n\n" + "Published at: " + postDate + "\n\n" + pdfHref + "\n\n" + hashtags)
@@ -176,7 +177,7 @@ def main():
 
 if __name__ == "__main__":
     print("----------------------------------------------------")
-    print(datetime.datetime.strftime(datetime.datetime.utcnow(), "%Y/%m/%d %H:%M UTC"))
+    print(str(datetime.datetime.now().strftime("%Y/%m/%d %H:%M:%S")))
 
     # Set temp folder
     tmpFolder = os.path.join(os.path.dirname(os.path.abspath(__file__)), "tmp")
@@ -209,4 +210,3 @@ if __name__ == "__main__":
                 browser.close()
                 print("Close")
             print("End")
-            print("----------------------------------------------------")
