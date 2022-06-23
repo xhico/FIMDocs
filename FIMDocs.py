@@ -11,6 +11,7 @@ import urllib.request
 import tweepy
 import yagmail
 import pdf2image
+import psutil
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.firefox.options import Options
@@ -181,16 +182,13 @@ if __name__ == "__main__":
 
     # Set temp folder
     tmpFolder = os.path.join(os.path.dirname(os.path.abspath(__file__)), "tmp")
-    ISRUNNING_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "isRunning.tmp")
     LOG_FILE = os.path.join(os.path.join(os.path.dirname(os.path.abspath(__file__)), "log.json"))
 
-    # Check if isRunning file exists
-    if os.path.exists(ISRUNNING_FILE):
+    # Check if script is already running
+    procs = [proc for proc in psutil.process_iter(attrs=["cmdline"]) if os.path.basename(__file__) in '\t'.join(proc.info["cmdline"])]
+    if len(procs) > 2:
         print("isRunning")
     else:
-        # Create isRunning file
-        open(ISRUNNING_FILE, "x")
-
         headless = True
         options = Options()
         options.headless = headless
@@ -204,8 +202,6 @@ if __name__ == "__main__":
             print(ex)
             yagmail.SMTP(EMAIL_USER, EMAIL_APPPW).send(EMAIL_RECEIVER, "Error - " + os.path.basename(__file__), str(ex))
         finally:
-            # Remove isRunning file
-            os.remove(ISRUNNING_FILE)
             if headless:
                 browser.close()
                 print("Close")
