@@ -1,0 +1,4 @@
+yagmail
+tweepy
+selenium
+pdf2image
