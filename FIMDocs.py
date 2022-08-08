@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # !/usr/bin/python3
 
-# python3 -m pip install yagmail tweepy selenium pdf2image --no-cache-dir
+# python3 -m pip install yagmail tweepy selenium pdf2image psutil --no-cache-dir
 # sudo apt install poppler-utils -y
 import json
 import os
