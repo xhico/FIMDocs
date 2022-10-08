@@ -13,6 +13,7 @@ import yagmail
 import pdf2image
 import psutil
 import traceback
+import logging
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.firefox.options import Options
@@ -27,22 +28,9 @@ def get911(key):
     return data[key]
 
 
-CONSUMER_KEY = get911('TWITTER_FIMDOCS_CONSUMER_KEY')
-CONSUMER_SECRET = get911('TWITTER_FIMDOCS_CONSUMER_SECRET')
-ACCESS_TOKEN = get911('TWITTER_FIMDOCS_ACCESS_TOKEN')
-ACCESS_TOKEN_SECRET = get911('TWITTER_FIMDOCS_ACCESS_TOKEN_SECRET')
-EMAIL_USER = get911('EMAIL_USER')
-EMAIL_APPPW = get911('EMAIL_APPPW')
-EMAIL_RECEIVER = get911('EMAIL_RECEIVER')
-
-auth = tweepy.OAuthHandler(CONSUMER_KEY, CONSUMER_SECRET)
-auth.set_access_token(ACCESS_TOKEN, ACCESS_TOKEN_SECRET)
-api = tweepy.API(auth)
-
-
 def getLastTweetedPost():
     try:
-        with open(LOG_FILE) as inFile:
+        with open(CONFIG_FILE) as inFile:
             data = json.load(inFile)[0]
         return data["date"], data["title"], data["href"]
     except Exception:
@@ -73,7 +61,7 @@ def getPosts():
 
     # Sort documents by date, newest to older
     if tmpDocuments[0]["date"] < tmpDocuments[-1]["date"]:
-        print("Reverse Documents")
+        logger.info("Reverse Documents")
         tmpDocuments = reversed(tmpDocuments)
 
     # Go through each card
@@ -114,7 +102,7 @@ def getScreenshots(pdfHref):
             page.save(jpgFile)
         hasPics = True
     except Exception:
-        print("Failed to screenshot")
+        logger.error("Failed to screenshot")
         hasPics = False
 
     return hasPics
@@ -125,14 +113,14 @@ def tweet(tweetStr):
         imageFiles = sorted([os.path.join(tmpFolder, file) for file in os.listdir(tmpFolder) if file.split(".")[-1] == "jpg"])
         media_ids = [api.media_upload(os.path.join(tmpFolder, image)).media_id_string for image in imageFiles]
         api.update_status(status=tweetStr, media_ids=media_ids)
-        print("Tweeted")
+        logger.info("Tweeted")
     except Exception as ex:
-        print("Failed to Tweet")
+        logger.error("Failed to Tweet")
         yagmail.SMTP(EMAIL_USER, EMAIL_APPPW).send(EMAIL_RECEIVER, "Failed to Tweet - " + os.path.basename(__file__), str(ex) + "\n\n" + tweetStr)
 
 
 def batchDelete():
-    print("Deleting all tweets from the account @" + api.verify_credentials().screen_name)
+    logger.info("Deleting all tweets from the account @" + api.verify_credentials().screen_name)
     for status in tweepy.Cursor(api.user_timeline).items():
         try:
             api.destroy_status(status.id)
@@ -142,7 +130,7 @@ def batchDelete():
 
 def main():
     # Get latest posts
-    print("Get latest posts")
+    logger.info("Get latest posts")
     newPosts = list(reversed(getPosts()))
 
     # Set hashtags
@@ -152,8 +140,8 @@ def main():
     for post in newPosts:
         # Get post info
         postTitle, postDate, postHref = post["title"], post["date"], post["href"]
-        print(postTitle)
-        print(postDate)
+        logger.info(postTitle)
+        logger.info(postDate)
 
         # Get PDF link
         try:
@@ -170,25 +158,41 @@ def main():
         tweet(postTitle + "\n\n" + "Published at: " + postDate + "\n\n" + pdfHref + "\n\n" + hashtags)
 
         # Save log
-        with open(LOG_FILE) as inFile:
+        with open(CONFIG_FILE) as inFile:
             data = list(reversed(json.load(inFile)))
             data.append(post)
-        with open(LOG_FILE, "w") as outFile:
+        with open(CONFIG_FILE, "w") as outFile:
             json.dump(list(reversed(data)), outFile, indent=2)
 
 
 if __name__ == "__main__":
-    print("----------------------------------------------------")
-    print(str(datetime.datetime.now().strftime("%Y/%m/%d %H:%M:%S")))
+    # Set Logging
+    LOG_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), os.path.abspath(__file__).replace(".py", ".log"))
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s", handlers=[logging.FileHandler(LOG_FILE), logging.StreamHandler()])
+    logger = logging.getLogger()
+
+    logger.info("----------------------------------------------------")
+
+    CONSUMER_KEY = get911('TWITTER_FIMDOCS_CONSUMER_KEY')
+    CONSUMER_SECRET = get911('TWITTER_FIMDOCS_CONSUMER_SECRET')
+    ACCESS_TOKEN = get911('TWITTER_FIMDOCS_ACCESS_TOKEN')
+    ACCESS_TOKEN_SECRET = get911('TWITTER_FIMDOCS_ACCESS_TOKEN_SECRET')
+    EMAIL_USER = get911('EMAIL_USER')
+    EMAIL_APPPW = get911('EMAIL_APPPW')
+    EMAIL_RECEIVER = get911('EMAIL_RECEIVER')
+
+    auth = tweepy.OAuthHandler(CONSUMER_KEY, CONSUMER_SECRET)
+    auth.set_access_token(ACCESS_TOKEN, ACCESS_TOKEN_SECRET)
+    api = tweepy.API(auth)
 
     # Set temp folder
     tmpFolder = os.path.join(os.path.dirname(os.path.abspath(__file__)), "tmp")
-    LOG_FILE = os.path.join(os.path.join(os.path.dirname(os.path.abspath(__file__)), "log.json"))
+    CONFIG_FILE = os.path.join(os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.json"))
 
     # Check if script is already running
     procs = [proc for proc in psutil.process_iter(attrs=["cmdline"]) if os.path.basename(__file__) in '\t'.join(proc.info["cmdline"])]
     if len(procs) > 2:
-        print("isRunning")
+        logger.info("isRunning")
     else:
         headless = True
         options = Options()
@@ -200,10 +204,10 @@ if __name__ == "__main__":
         try:
             main()
         except Exception as ex:
-            print(traceback.format_exc())
+            logger.error(traceback.format_exc())
             yagmail.SMTP(EMAIL_USER, EMAIL_APPPW).send(EMAIL_RECEIVER, "Error - " + os.path.basename(__file__), str(traceback.format_exc()))
         finally:
             if headless:
                 browser.close()
-                print("Close")
-            print("End")
+                logger.info("Close")
+            logger.info("End")
