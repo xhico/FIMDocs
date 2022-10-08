@@ -20,12 +20,7 @@ from selenium.webdriver.firefox.options import Options
 from selenium.webdriver.firefox.service import Service
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.wait import WebDriverWait
-
-
-def get911(key):
-    with open('/home/pi/.911') as f:
-        data = json.load(f)
-    return data[key]
+from Misc import get911
 
 
 def getLastTweetedPost():
