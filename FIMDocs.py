@@ -3,6 +3,7 @@
 
 # python3 -m pip install yagmail tweepy selenium pdf2image psutil --no-cache-dir
 # sudo apt install poppler-utils -y
+
 import json
 import os
 import datetime
@@ -153,6 +154,9 @@ def main():
         tweet(postTitle + "\n\n" + "Published at: " + postDate + "\n\n" + pdfHref + "\n\n" + hashtags)
 
         # Save log
+        if not os.path.exists(CONFIG_FILE):
+            with open(CONFIG_FILE, "w") as outFile:
+                json.dump(list(reversed({})), outFile, indent=2)
         with open(CONFIG_FILE) as inFile:
             data = list(reversed(json.load(inFile)))
             data.append(post)
