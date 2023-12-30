@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 # !/usr/bin/python3
 
-# python3 -m pip install yagmail tweepy selenium pdf2image psutil --no-cache-dir
 # sudo apt install poppler-utils -y
 
 import json
@@ -84,12 +83,12 @@ def getScreenshots(pdfHref):
         # Download PDF
         pdfFile = os.path.join(tmpFolder, "tmp.pdf")
         urllib.request.urlretrieve(pdfHref, pdfFile)
-        
+
         # Check if file is bigger than 2 MB -> Don't get screenshots
         if os.path.getsize(pdfFile) > 2 * 1024 * 1024:
-            return False 
+            return False
 
-        # Check what OS
+            # Check what OS
         if os.name == "nt":
             poppler_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "poppler-win\Library\bin")
             pages = pdf2image.convert_from_path(poppler_path=poppler_path, pdf_path=pdfFile)
