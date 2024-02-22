@@ -2,3 +2,4 @@
 geckodriver.log
 poppler-win/
 tmp/
+venv/
