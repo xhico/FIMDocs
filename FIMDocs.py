@@ -3,23 +3,25 @@
 
 # sudo apt install poppler-utils -y
 
-import json
-import os
 import datetime
+import json
+import logging
+import os
 import shutil
+import traceback
 import urllib.request
-import tweepy
-import yagmail
+
 import pdf2image
 import psutil
-import traceback
-import logging
+import tweepy
+import yagmail
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.firefox.options import Options
 from selenium.webdriver.firefox.service import Service
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.wait import WebDriverWait
+
 from Misc import get911
 
 
